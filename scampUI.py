@@ -11,7 +11,7 @@ def construct_ensemble():
 
     piano_clef = ensemble.new_part("harp")
     piano_bass = ensemble.new_part("violoncello")
-    return [piano_clef,piano_bass]
+    return [piano_clef,piano_bass,ensemble.new_part("piano"),ensemble.new_part("piano"),ensemble.new_part("harp"),ensemble.new_part("flute")]
     #strings = ensemble.new_part("strings", (0, 40))
 
 
@@ -109,23 +109,23 @@ tracks = construct_ensemble()
 #drums = s.new_part("Concert Bass Drum")
 
 
-def play_notes_for_clef(numNotes,duration):
+def play_notes_for_first(numNotes,duration):
     global countBass, countClick, tracks, currentCounter, startPitchClef, oneOctave,twoLoops, instrument, affineGroupIndex, bass
-    print("playing clef" ,oneOctave[startPitchClef],countClick%2) 
+    print("playing first" ,oneOctave[startPitchClef]) 
     
     for k in range(numNotes):
-        tracks[countClick%2].play_note(oneOctave[startPitchClef], 0.7,duration)
+        tracks[(countClick%len(tracks)+countClick%2)%len(tracks)].play_note(oneOctave[startPitchClef], 0.7,duration)
         #tracks[1].play_note(bassOctave[startPitch], 1, 1.0)
         startPitchClef = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchClef) 
     
 
-def play_notes_for_bass(numNotes,duration):
+def play_notes_for_second(numNotes,duration):
     global countBass,countClick, tracks, currentCounterBass, startPitchBass, oneOctave,twoLoops, instrument, affineGroupIndex, bass
-    print("playing bass" ,bassOctave[startPitchBass],(countClick+1)%2) 
+    print("playing second" ,bassOctave[startPitchBass]) 
     
     #tracks[0].play_note(oneOctave[startPitch], 0.5, 0.5)
     for k in range(numNotes):
-        tracks[(countClick+1)%2].play_note(bassOctave[startPitchBass], 0.7, duration)
+        tracks[(countClick%len(tracks)+(countClick+1)%2)%len(tracks)].play_note(bassOctave[startPitchBass], 0.7, duration)
         countBass+=1
         startPitchBass = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchBass)               
     
@@ -134,9 +134,9 @@ if __name__=="__main__":
     listener.start()
     while True:
         if countBass%8 in [0,3,6]:
-            s.fork(play_notes_for_clef,(4,0.5))
-            s.fork(play_notes_for_bass,(1,2.0))
+            s.fork(play_notes_for_first,(4,0.5))
+            s.fork(play_notes_for_second,(1,2.0))
         else:
-            s.fork(play_notes_for_clef,(2,0.5))
-            s.fork(play_notes_for_bass,(1,1.0))
+            s.fork(play_notes_for_first,(2,0.5))
+            s.fork(play_notes_for_second,(1,1.0))
         s.wait_for_children_to_finish()
