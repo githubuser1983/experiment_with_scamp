@@ -43,16 +43,15 @@ def orderMul(x):
 
 
 def on_move(x, y):
+    global currentCounter
     print('Pointer moved to {0}'.format(
         (x, y)))
+    currentCounter += y-x
 
 def on_click(x, y, button, pressed):
     print('{0} at {1}'.format(
         'Pressed' if pressed else 'Released',
         (x, y)))
-    if not pressed:
-        # Stop listener
-        return False
     
 def on_scroll(x, y, dx, dy):
     global currentCounter, startPitch, oneOctave,twoLoops, instrument
