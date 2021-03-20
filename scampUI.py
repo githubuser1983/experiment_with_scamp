@@ -10,7 +10,7 @@ def construct_ensemble():
     #ensemble.print_default_soundfont_presets()
 
     piano_clef = ensemble.new_part("harp")
-    piano_bass = ensemble.new_part("harp")
+    piano_bass = ensemble.new_part("violoncello")
     return [piano_clef,piano_bass]
     #strings = ensemble.new_part("strings", (0, 40))
 
@@ -49,9 +49,13 @@ def on_move(x, y):
     currentCounter += y-x
 
 def on_click(x, y, button, pressed):
+    global countClick
     print('{0} at {1}'.format(
         'Pressed' if pressed else 'Released',
         (x, y)))
+    if pressed:
+        countClick += 1
+        #print(countClick)
     
 def on_scroll(x, y, dx, dy):
     global currentCounter, startPitch, oneOctave,twoLoops, instrument
@@ -73,7 +77,8 @@ def on_scroll(x, y, dx, dy):
 # ...or, in a non-blocking fashion:
 listener = mouse.Listener(on_move=on_move,on_click=on_click,on_scroll=on_scroll)
 
-    
+
+countClick = 0 
 currentCounter = 0
 oneOctave = list(range(60,72))
 bassOctave = list(range(60-1*12,60-0*12))
@@ -102,27 +107,27 @@ tracks = construct_ensemble()
 #s.print_available_midi_output_devices()
 
 #drums = s.new_part("Concert Bass Drum")
-instrument = s.new_part("harp")
-bass = s.new_part("harp")
+
 
 def play_notes_for_clef(numNotes,duration):
-    global countBass, tracks, currentCounter, startPitchClef, oneOctave,twoLoops, instrument, affineGroupIndex, bass
-    print("playing clef" ,oneOctave[startPitchClef]) 
+    global countBass, countClick, tracks, currentCounter, startPitchClef, oneOctave,twoLoops, instrument, affineGroupIndex, bass
+    print("playing clef" ,oneOctave[startPitchClef],countClick%2) 
     
     for k in range(numNotes):
-        tracks[0].play_note(oneOctave[startPitchClef], 0.7,duration)
+        tracks[countClick%2].play_note(oneOctave[startPitchClef], 0.7,duration)
         #tracks[1].play_note(bassOctave[startPitch], 1, 1.0)
         startPitchClef = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchClef) 
     
 
 def play_notes_for_bass(numNotes,duration):
-    global countBass,tracks, currentCounterBass, startPitchBass, oneOctave,twoLoops, instrument, affineGroupIndex, bass
-    print("playing bass" ,bassOctave[startPitchBass]) 
+    global countBass,countClick, tracks, currentCounterBass, startPitchBass, oneOctave,twoLoops, instrument, affineGroupIndex, bass
+    print("playing bass" ,bassOctave[startPitchBass],(countClick+1)%2) 
     
     #tracks[0].play_note(oneOctave[startPitch], 0.5, 0.5)
-    tracks[1].play_note(bassOctave[startPitchBass], 0.7, duration)
-    countBass+=1
-    startPitchBass = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchBass)               
+    for k in range(numNotes):
+        tracks[(countClick+1)%2].play_note(bassOctave[startPitchBass], 0.7, duration)
+        countBass+=1
+        startPitchBass = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchBass)               
     
     
 if __name__=="__main__":
