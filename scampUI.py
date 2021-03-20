@@ -9,8 +9,8 @@ def construct_ensemble():
 
     #ensemble.print_default_soundfont_presets()
 
-    piano_clef = ensemble.new_part("piano")
-    piano_bass = ensemble.new_part("piano")
+    piano_clef = ensemble.new_part("harp")
+    piano_bass = ensemble.new_part("harp")
     return [piano_clef,piano_bass]
     #strings = ensemble.new_part("strings", (0, 40))
 
@@ -90,10 +90,11 @@ threeLoops = [x for o,x in affineGroupByOrder if o==3]
 fourLoops = [x for o,x in affineGroupByOrder if o==4]
 print(len(twoLoops))
 print(len(fourLoops))
+countBass = 0
 
 #s = Session(default_soundfont_preset="path/to/soundfont.sf2")
 #s = Session(default_soundfont="/usr/share/sounds/sf2/FluidR3_GM.sf2",tempo=130)
-s = Session(tempo=130)
+s = Session(tempo=120)
 
 tracks = construct_ensemble()
 #s.print_default_soundfont_presets()
@@ -102,33 +103,36 @@ tracks = construct_ensemble()
 #s.print_available_midi_output_devices()
 
 #drums = s.new_part("Concert Bass Drum")
-instrument = s.new_part("Yamaha Grand Piano")
-bass = s.new_part("Yamaha Grand Piano")
+instrument = s.new_part("harp")
+bass = s.new_part("harp")
 
-def play_two_notes_for_clef():
-    global tracks, currentCounter, startPitchClef, oneOctave,twoLoops, instrument, affineGroupIndex, bass
+def play_notes_for_clef(numNotes,duration):
+    global countBass, tracks, currentCounter, startPitchClef, oneOctave,twoLoops, instrument, affineGroupIndex, bass
     print("playing clef" ,oneOctave[startPitchClef]) 
     
-    tracks[0].play_note(oneOctave[startPitchClef], 1, 0.5)
-    #tracks[1].play_note(bassOctave[startPitch], 1, 1.0)
-    startPitchClef = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchClef) 
+    for k in range(numNotes):
+        tracks[0].play_note(oneOctave[startPitchClef], 0.7,duration)
+        #tracks[1].play_note(bassOctave[startPitch], 1, 1.0)
+        startPitchClef = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchClef) 
     
-    tracks[0].play_note(oneOctave[startPitchClef], 1, 0.5)
-    #tracks[1].play_note(bassOctave[startPitch], 1, 1.0)
-    startPitchClef = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchClef)  
 
-def play_note_for_bass():
-    global tracks, currentCounterBass, startPitchBass, oneOctave,twoLoops, instrument, affineGroupIndex, bass
+def play_notes_for_bass(numNotes,duration):
+    global countBass,tracks, currentCounterBass, startPitchBass, oneOctave,twoLoops, instrument, affineGroupIndex, bass
     print("playing bass" ,bassOctave[startPitchBass]) 
     
     #tracks[0].play_note(oneOctave[startPitch], 0.5, 0.5)
-    tracks[1].play_note(bassOctave[startPitchBass], 1, 1.0)
+    tracks[1].play_note(bassOctave[startPitchBass], 0.7, duration)
+    countBass+=1
     startPitchBass = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchBass)               
     
     
 if __name__=="__main__":
     listener.start()
     while True:
-        s.fork(play_two_notes_for_clef)
-        s.fork(play_note_for_bass)
+        if countBass%8 in [0,3,6]:
+            s.fork(play_notes_for_clef,(4,0.5))
+            s.fork(play_notes_for_bass,(1,2.0))
+        else:
+            s.fork(play_notes_for_clef,(2,0.5))
+            s.fork(play_notes_for_bass,(1,1.0))
         s.wait_for_children_to_finish()
