@@ -43,10 +43,11 @@ def orderMul(x):
 
 
 def on_move(x, y):
-    global currentCounter
+    global xPos,yPos
     print('Pointer moved to {0}'.format(
         (x, y)))
-    currentCounter += y-x
+    xPos = x
+    yPos = y
 
 def on_click(x, y, button, pressed):
     global countClick
@@ -55,7 +56,7 @@ def on_click(x, y, button, pressed):
         (x, y)))
     if pressed:
         countClick += 1
-        #print(countClick)
+        print(button)
     
 def on_scroll(x, y, dx, dy):
     global currentCounter, startPitch, oneOctave,twoLoops, instrument
@@ -78,6 +79,8 @@ def on_scroll(x, y, dx, dy):
 listener = mouse.Listener(on_move=on_move,on_click=on_click,on_scroll=on_scroll)
 
 
+xPos = 1
+yPos = 1
 countClick = 0 
 currentCounter = 0
 oneOctave = list(range(60,72))
@@ -110,22 +113,22 @@ tracks = construct_ensemble()
 
 
 def play_notes_for_first(numNotes,duration):
-    global countBass, countClick, tracks, currentCounter, startPitchClef, oneOctave,twoLoops, instrument, affineGroupIndex, bass
+    global xPos,yPos,countBass, countClick, tracks, currentCounter, startPitchClef, oneOctave,twoLoops, instrument, affineGroupIndex, bass
     print("playing first" ,oneOctave[startPitchClef]) 
     
     for k in range(numNotes):
-        tracks[(countClick%len(tracks)+countClick%2)%len(tracks)].play_note(oneOctave[startPitchClef], 0.7,duration)
+        tracks[(countClick%len(tracks)+countClick%2)%len(tracks)].play_note(oneOctave[startPitchClef], (1-1/(xPos+1)),duration)
         #tracks[1].play_note(bassOctave[startPitch], 1, 1.0)
         startPitchClef = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchClef) 
     
 
 def play_notes_for_second(numNotes,duration):
-    global countBass,countClick, tracks, currentCounterBass, startPitchBass, oneOctave,twoLoops, instrument, affineGroupIndex, bass
+    global xPos,yPos, countBass,countClick, tracks, startPitchBass, oneOctave,twoLoops, instrument, affineGroupIndex, bass
     print("playing second" ,bassOctave[startPitchBass]) 
     
     #tracks[0].play_note(oneOctave[startPitch], 0.5, 0.5)
     for k in range(numNotes):
-        tracks[(countClick%len(tracks)+(countClick+1)%2)%len(tracks)].play_note(bassOctave[startPitchBass], 0.7, duration)
+        tracks[(countClick%len(tracks)+(countClick+1)%2)%len(tracks)].play_note(bassOctave[startPitchBass], (1-1/(yPos+1)), duration)
         countBass+=1
         startPitchBass = aT(*affineGroupIndex[currentCounter%len(affineGroupIndex)])(startPitchBass)               
     
