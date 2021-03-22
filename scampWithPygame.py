@@ -84,6 +84,9 @@ s = Session(tempo=120)
 
 tracks = construct_ensemble()
 
+for t in tracks:
+    s.add_instrument(t)
+
 
 def play_notes_for_instrument(instNr, numNotes,duration):
     global tracks, counters, startPitchBass,bassOctave, affineGroupIndex, oneOctave, startPitch, countBass
@@ -131,6 +134,11 @@ def main():
             leftPressed,middlePressed,rightPressed = pygame.mouse.get_pressed()
             print(xPos,yPos,leftPressed,rightPressed)
             rect = getRect(xPos,yPos)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 4: 
+                    updateCounterForRect(rect,True)
+                if event.button == 5:
+                    updateCounterForRect(rect,False)
             if leftPressed:
                 updateCounterForRect(rect,True)
             if rightPressed:
@@ -155,4 +163,9 @@ def main():
       s.wait_for_children_to_finish()
       clock.tick()
 # Execute game:
+s.start_transcribing()
 main()
+performance = s.stop_transcribing()
+score = performance.to_score()
+music_xml = score.to_music_xml()
+music_xml.export_to_file("my_first_music_xml.xml")
