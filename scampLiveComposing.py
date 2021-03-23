@@ -17,7 +17,7 @@ def construct_ensemble(sf):
 
     second = ensemble.new_part("Glockenspiel")
     first = ensemble.new_part("Violin") #("violoncello")
-    return [first,second,ensemble.new_part("Piano"),ensemble.new_part("Piano"),ensemble.new_part("Panflute"),ensemble.new_part("Harp"),ensemble.new_part("Violoncello"),ensemble.new_part("Concert Bass Drum")]
+    return [first,second,ensemble.new_part("Piano"),ensemble.new_part("Piano"),ensemble.new_part("Panflute"),ensemble.new_part("Harp"),ensemble.new_part("Violoncello"),ensemble.new_part("Acoustic Bass")]
     #strings = ensemble.new_part("strings", (0, 40))
 
 def aT(u,a):
@@ -280,7 +280,7 @@ def play_bar_for_instrument(instNr,bar):
     for i in range(len(bar)):
         nc,duration,volume = bar[i]
         dur = 4.0/(duration)
-        pitch = nc[0]
+        pitch = nc[0]+counters[16+instNr]*12 # octave at third row, counter = 0 -> 4-th octave
         if not pitch is None:
             tracks[instNr].play_note(pitch,volume, dur)
 
