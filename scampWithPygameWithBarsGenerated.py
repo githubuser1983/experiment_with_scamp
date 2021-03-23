@@ -11,9 +11,9 @@ def construct_ensemble():
 
     #ensemble.print_default_soundfont_presets()
 
-    second = ensemble.new_part("Concert Bass Drum")
-    first = ensemble.new_part("guitar") #("violoncello")
-    return [first,second,ensemble.new_part("piano"),ensemble.new_part("piano"),ensemble.new_part("flute"),ensemble.new_part("harp")]
+    second = ensemble.new_part("Violoncello")
+    first = ensemble.new_part("Violin") #("violoncello")
+    return [first,second,ensemble.new_part("Piano"),ensemble.new_part("Piano"),ensemble.new_part("Panflute"),ensemble.new_part("Harp")]
     #strings = ensemble.new_part("strings", (0, 40))
 
 def aT(u,a):
@@ -81,7 +81,7 @@ print(len(fourLoops))
 countBass = 0
 
 
-s = Session(tempo=60,default_soundfont="/usr/share/sounds/sf2/FluidR3_GM.sf2")
+s = Session(tempo=120,default_soundfont="/usr/share/sounds/sf2/FluidR3_GM.sf2") #.run_as_server()
 
 s.print_available_midi_output_devices()
 
@@ -152,6 +152,23 @@ def sumTree(n,leftToRight=True):
         else:
             return [sumTree(n-int(n//2),leftToRight),sumTree(int(n//2),leftToRight)]
 
+
+def digitsTree(n):
+    if n==0:
+        return []
+    dd = digits(n-1,2)
+    dd.reverse()
+    #print(dd)
+    ll = []
+    oo = [dd[i] for i in range(len(dd)) if i%2==1]
+    ee = [dd[i] for i in range(len(dd)) if i%2==0]
+    #print(oo,ee)
+    O = sum([2**(i)*oo[i] for i in range(len(oo))])
+    E = sum([2**(i)*ee[i] for i in range(len(ee))])
+    #print(O,E)
+    return [digitsTree(O),digitsTree(E)]
+
+
 def getDurationsFromTree(tree):
     # Identify leaves by their length
     if len(tree) == 0:
@@ -185,7 +202,7 @@ def generateBar(nTracks,barNumber,notelist,SYMFUNC,NFUNC,BASEFUNC):
         c = 1
         for bb in [barNumber]:
             K = bb[tt]
-            mingusDurations = getDurationsFromTree(sumTree(max(K,1),True))
+            mingusDurations = getDurationsFromTree(digitsTree(max(K,1)))
             durations = mingusDurations
             pitches = []
             volumes = []
@@ -201,7 +218,7 @@ def generateBar(nTracks,barNumber,notelist,SYMFUNC,NFUNC,BASEFUNC):
                 else:
                     pitch = None
                 pitches.append([pitch])
-                volumes.append(0.5)    # todo: change this
+                volumes.append(0.1*bb[tt])    # todo: change this
             bar = list(zip(pitches,durations,volumes))        
             bars[tt].append(bar)    
     return(bars)
@@ -231,7 +248,7 @@ def main():
    while True:
       nTracks = len(tracks)
       barNumbers = [counters[k]  for k in range(nTracks)]
-      bars = generateBar(len(tracks), barNumbers, oneOctave, SYMFUNC,NFUNC,BASEFUNC)
+      bars = generateBar(nTracks, barNumbers, oneOctave, SYMFUNC,NFUNC,BASEFUNC)
       for tt in range(len(tracks)):
           for t in range(len(bars[tt])):
               if counters[tt]>0:
@@ -239,7 +256,7 @@ def main():
       for event in pygame.event.get():
             xPos,yPos = (pygame.mouse.get_pos())
             leftPressed,middlePressed,rightPressed = pygame.mouse.get_pressed()
-            print(xPos,yPos,leftPressed,rightPressed)
+            #print(xPos,yPos,leftPressed,rightPressed)
             rect = getRect(xPos,yPos)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4: 
@@ -252,13 +269,12 @@ def main():
                 updateCounterForRect(rect,False)
             #print(counters)
             if event.type == QUIT:
-               pygame.quit()
+               #pygame.quit()
                return
-            elif event.type == pygame.MOUSEWHEEL:
-               print(event)
-               print(event.x, event.y)
-               print(event.flipped)
-               print(event.which)
+               #print(event)
+               #print(event.x, event.y)
+               #print(event.flipped)
+               #print(event.which)
                # can access properties with
                # proper notation(ex: event.y)
       for k in range(8):
