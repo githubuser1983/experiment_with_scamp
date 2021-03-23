@@ -2,18 +2,22 @@ import pygame
 from pygame.locals import *
 import random
 
+generalSF = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
+
+sf = generalSF
+
 
 from scamp import Session, Ensemble
 
-def construct_ensemble():
+def construct_ensemble(sf):
     global piano_clef,piano_bass, flute, strings, session
-    ensemble = Ensemble(default_soundfont="/usr/share/sounds/sf2/FluidR3_GM.sf2")
+    ensemble = Ensemble(default_soundfont=sf)
 
-    #ensemble.print_default_soundfont_presets()
+    ensemble.print_default_soundfont_presets()
 
-    second = ensemble.new_part("Violoncello")
+    second = ensemble.new_part("Glockenspiel")
     first = ensemble.new_part("Violin") #("violoncello")
-    return [first,second,ensemble.new_part("Piano"),ensemble.new_part("Piano"),ensemble.new_part("Panflute"),ensemble.new_part("Harp")]
+    return [first,second,ensemble.new_part("Piano"),ensemble.new_part("Piano"),ensemble.new_part("Panflute"),ensemble.new_part("Harp"),ensemble.new_part("Violoncello"),ensemble.new_part("Concert Bass Drum")]
     #strings = ensemble.new_part("strings", (0, 40))
 
 def aT(u,a):
@@ -81,14 +85,31 @@ print(len(fourLoops))
 countBass = 0
 
 
-s = Session(tempo=120,default_soundfont="/usr/share/sounds/sf2/FluidR3_GM.sf2") #.run_as_server()
+s = Session(tempo=120,default_soundfont=sf) #.run_as_server()
 
 s.print_available_midi_output_devices()
 
-tracks = construct_ensemble()
+tracks = construct_ensemble(sf)
 
 for t in tracks:
     s.add_instrument(t)
+
+piano = s.new_part("Piano")
+s.add_instrument(piano)
+
+def play_piano(pitch,volume,duration):
+    global piano
+    piano.play_note(pitch,volume,duration)
+
+def callback_midi(midi):
+    global s,piano
+    code,pitch,volume = midi
+    if volume > 0 and 144 <= code <= 159:
+        s.fork(play_piano,(pitch,volume,0.5))
+        #s.wait_for_children_to_finish()
+
+s.register_midi_listener(port_number_or_device_name=1, callback_function=callback_midi)
+
 
 
 counters =  dict(zip(range(48),48*[0]))
@@ -218,7 +239,7 @@ def generateBar(nTracks,barNumber,notelist,SYMFUNC,NFUNC,BASEFUNC):
                 else:
                     pitch = None
                 pitches.append([pitch])
-                volumes.append(0.1*bb[tt])    # todo: change this
+                volumes.append(0.50)    # todo: change this
             bar = list(zip(pitches,durations,volumes))        
             bars[tt].append(bar)    
     return(bars)
@@ -265,6 +286,10 @@ def play_bar_for_instrument(instNr,bar):
 
 
 
+def setCounterToValue(rect,value):
+    global counters
+    counters[rect]= value
+
 def main():
    global countBass,tracks,oneOctave,SYMFUNC,NFUNC,BASEFUNC, counters, listFuncs
    while True:
@@ -272,10 +297,10 @@ def main():
       barNumbers = [counters[k]  for k in range(nTracks)]
       for tt in range(len(tracks)):
           SYMFUNC,NFUNC,BASEFUNC = listFuncs[ max(counters[8+tt],0)%len(listFuncs)]
-          bars = generateBar(1, barNumbers, oneOctave, SYMFUNC,NFUNC,BASEFUNC)
-          for t in range(len(bars[0])):
+          bars = generateBar(nTracks, barNumbers, oneOctave, SYMFUNC,NFUNC,BASEFUNC)
+          for t in range(len(bars[tt])):
               if counters[tt]>0:
-                  s.fork(play_bar_for_instrument,(tt,bars[0][t]))
+                  s.fork(play_bar_for_instrument,(tt,bars[tt][t]))
       for event in pygame.event.get():
             xPos,yPos = (pygame.mouse.get_pos())
             leftPressed,middlePressed,rightPressed = pygame.mouse.get_pressed()
@@ -287,9 +312,7 @@ def main():
                 if event.button == 5:
                     updateCounterForRect(rect,False)
             if leftPressed:
-                updateCounterForRect(rect,True)
-            if rightPressed:
-                updateCounterForRect(rect,False)
+                setCounterToValue(rect,0)
             #print(counters)
             if event.type == QUIT:
                #pygame.quit()
