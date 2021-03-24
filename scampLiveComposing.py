@@ -280,7 +280,7 @@ def play_bar_for_instrument(instNr,bar):
     for i in range(len(bar)):
         nc,duration,volume = bar[i]
         dur = 4.0/(duration)
-        pitch = nc[0]+counters[16+instNr]*12 # octave at third row, counter = 0 -> 4-th octave
+        pitch = max(min(nc[0]+counters[16+instNr]*12,127),0) # octave at third row, counter = 0 -> 4-th octave
         if not pitch is None:
             tracks[instNr].play_note(pitch,volume, dur)
 
@@ -312,7 +312,13 @@ def main():
                 if event.button == 5:
                     updateCounterForRect(rect,False)
             if leftPressed:
+                val = counters[rect]//2
+                setCounterToValue(rect,val)
+            if middlePressed:
                 setCounterToValue(rect,0)
+            if rightPressed:
+                val =  counters[rect]*2
+                setCounterToValue(rect,val)
             #print(counters)
             if event.type == QUIT:
                #pygame.quit()
