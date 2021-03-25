@@ -1,6 +1,6 @@
 import pygame
 from pygame.locals import *
-import random
+import random, sys, pickle
 
 generalSF = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
 
@@ -14,10 +14,9 @@ def construct_ensemble(sf):
     ensemble = Ensemble(default_soundfont=sf)
 
     ensemble.print_default_soundfont_presets()
-
-    second = ensemble.new_part("Glockenspiel")
-    first = ensemble.new_part("Violin") #("violoncello")
-    return [first,second,ensemble.new_part("Piano"),ensemble.new_part("Piano"),ensemble.new_part("Panflute"),ensemble.new_part("Harp"),ensemble.new_part("Violoncello"),ensemble.new_part("Acoustic Bass")]
+    
+    std = ["Harp","Harp","Piano","Piano","Violin","Violoncello","Panflute","Acoustic Bass"] 
+    return [ensemble.new_part(p) for p in std]
     #strings = ensemble.new_part("strings", (0, 40))
 
 def aT(u,a):
@@ -95,6 +94,7 @@ for t in tracks:
     s.add_instrument(t)
 
 piano = s.new_part("Piano")
+#piano = s.new_part("Concert Bass Drum")
 s.add_instrument(piano)
 
 def play_piano(pitch,volume,duration):
@@ -111,8 +111,10 @@ def callback_midi(midi):
 s.register_midi_listener(port_number_or_device_name=1, callback_function=callback_midi)
 
 
-
-counters =  dict(zip(range(48),48*[0]))
+try:
+    counters = pickle.load(open("counters.pkl","rb"))
+except:
+    counters =  dict(zip(range(48),48*[0]))
 
 def updateCounterForRect(rectangleNumber,plusOne=True):
     global counters
@@ -223,7 +225,7 @@ def generateBar(nTracks,barNumber,notelist,SYMFUNC,NFUNC,BASEFUNC):
         c = 1
         for bb in [barNumber]:
             K = bb[tt]
-            mingusDurations = getDurationsFromTree(digitsTree(max(K,1)))
+            mingusDurations = getDurationsFromTree([sumTree,digitsTree][counters[32+tt]%2](max(K,1)))
             durations = mingusDurations
             pitches = []
             volumes = []
@@ -239,7 +241,7 @@ def generateBar(nTracks,barNumber,notelist,SYMFUNC,NFUNC,BASEFUNC):
                 else:
                     pitch = None
                 pitches.append([pitch])
-                volumes.append(0.50)    # todo: change this
+                volumes.append(0.50+counters[40+tt]/10.0)    # todo: change this
             bar = list(zip(pitches,durations,volumes))        
             bars[tt].append(bar)    
     return(bars)
@@ -264,17 +266,21 @@ NFUNC = 5
 MFUNC = 6
 
 listFuncs = [ 
-               (funcTirana,5,6),
-               (funcTirana2,5,6),
-               (funcTirana3,5,6),
                (funcTirana4,5,6),
                (funcABC, 2, 19),
                (funcKlein, 4, 6),
+               (func,2,19),
+               (func,3,10),
+               (func,4,8),
+               (func, 5,6),
+               (funcTirana,5,6),
+               (funcTirana2,5,6),
+               (funcTirana3,5,6)
             ]
 
 def play_bar_for_instrument(instNr,bar):
     global tracks, counters
-    if counters[instNr]<=0:
+    if counters[24+instNr]<=0 or counters[instNr]<=0:
         return
     print(instNr,bar)
     for i in range(len(bar)):
@@ -299,7 +305,7 @@ def main():
           SYMFUNC,NFUNC,BASEFUNC = listFuncs[ max(counters[8+tt],0)%len(listFuncs)]
           bars = generateBar(nTracks, barNumbers, oneOctave, SYMFUNC,NFUNC,BASEFUNC)
           for t in range(len(bars[tt])):
-              if counters[tt]>0:
+              if counters[24+tt]>0 and counters[tt]>0:
                   s.fork(play_bar_for_instrument,(tt,bars[tt][t]))
       for event in pygame.event.get():
             xPos,yPos = (pygame.mouse.get_pos())
@@ -307,17 +313,17 @@ def main():
             #print(xPos,yPos,leftPressed,rightPressed)
             rect = getRect(xPos,yPos)
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 4: 
+                if event.button == 4:  #scroll up, increase counter by one
                     updateCounterForRect(rect,True)
-                if event.button == 5:
+                if event.button == 5: #scroll down, decrease counter by one
                     updateCounterForRect(rect,False)
             if leftPressed:
-                val = counters[rect]//2
+                val = counters[rect]//2 # left-button clicked: halve the value
                 setCounterToValue(rect,val)
             if middlePressed:
-                setCounterToValue(rect,0)
+                setCounterToValue(rect,0) # middle button clicked: set to zero
             if rightPressed:
-                val =  counters[rect]*2
+                val =  counters[rect]*2 # right button clicked: double the value
                 setCounterToValue(rect,val)
             #print(counters)
             if event.type == QUIT:
@@ -340,6 +346,12 @@ def main():
 # Execute game:
 s.start_transcribing()
 main()
+
+# write counters to file:
+
+with open("counters.pkl","wb") as f:
+    pickle.dump(counters,f)
+
 performance = s.stop_transcribing()
 score = performance.to_score()
 music_xml = score.to_music_xml()
