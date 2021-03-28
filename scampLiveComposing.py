@@ -1,10 +1,20 @@
-import pygame
+import pygame, numpy as np
 from pygame.locals import *
 import random, sys, pickle
 
-generalSF = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
 
-sf = generalSF
+# soundfonts from https://sites.google.com/site/soundfonts4u/home
+generalSF = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
+pianoSF = "/usr/share/sounds/sf2/Steinway_Grand-SF4U-v1.sf2"
+essentialSF = "/usr/share/sounds/sf2/Essential_Keys-sforzando-v9.5.sf2"
+bassSF = "/usr/share/sounds/sf2/Nice-Bass-Plus-Drums-v5.2.sf2"
+
+if len(sys.argv)>=2 and all(["Steinway" in a for a in sys.argv[1:]]):
+    sf = pianoSF
+elif len(sys.argv)==8+1+1:
+    sf = sys.argv[1]
+    std = sys.argv[2:]
+
 
 
 from scamp import Session, Ensemble
@@ -14,8 +24,13 @@ def construct_ensemble(sf):
     ensemble = Ensemble(default_soundfont=sf)
 
     ensemble.print_default_soundfont_presets()
-    
-    std = ["Harp","Harp","Piano","Piano","Violin","Violoncello","Panflute","Acoustic Bass"] 
+
+    #print(len(sys.argv))
+    #print(sys.argv)    
+    #if len(sys.argv) == 8+1:
+    #    std = sys.argv[1:]
+    #else:
+    #    std = ["Harp","Harp","Piano","Piano","Violin","Violoncello","Panflute","Acoustic Bass"] 
     return [ensemble.new_part(p) for p in std]
     #strings = ensemble.new_part("strings", (0, 40))
 
@@ -90,23 +105,28 @@ s.print_available_midi_output_devices()
 
 tracks = construct_ensemble(sf)
 
+print(len(tracks))
+
 for t in tracks:
     s.add_instrument(t)
 
-piano = s.new_part("Piano")
+piano = s.new_part("Acoustic Bass")
 #piano = s.new_part("Concert Bass Drum")
 s.add_instrument(piano)
 
-def play_piano(pitch,volume,duration):
+def play_piano(pitch,volume):
     global piano
-    piano.play_note(pitch,volume,duration)
+    print("instrument:",pitch,volume)
+    piano.start_note(pitch,volume)
 
-def callback_midi(midi):
-    global s,piano
+def callback_midi(midi,dt):
+    global s,piano, vol
     code,pitch,volume = midi
-    if volume > 0 and 144 <= code <= 159:
-        s.fork(play_piano,(pitch,volume,0.5))
-        #s.wait_for_children_to_finish()
+    print(midi,dt)
+    if code == 144: # note on
+        s.fork(play_piano,(pitch,127.0/(1+np.exp(-(volume-1)))))
+    elif code==128: # note off
+        piano.end_note()
 
 s.register_midi_listener(port_number_or_device_name=1, callback_function=callback_midi)
 
@@ -282,7 +302,7 @@ def play_bar_for_instrument(instNr,bar):
     global tracks, counters
     if counters[24+instNr]<=0 or counters[instNr]<=0:
         return
-    print(instNr,bar)
+    #print(tracks[instNr],bar)
     for i in range(len(bar)):
         nc,duration,volume = bar[i]
         dur = 4.0/(duration)

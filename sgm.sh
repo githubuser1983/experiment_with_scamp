@@ -1,0 +1,1 @@
+python3.6 scampLiveComposing.py /usr/share/sounds/sf2/SGM-v2.01-CompactGrand-Guit-Bass-v2.7.sf2 "Marimba" "--SGM drum kits--" "Fingered Bass" "Picked Bass" "Acoustic Bass" "Vibraphone" "Glockenspiel" "Grand Piano"
