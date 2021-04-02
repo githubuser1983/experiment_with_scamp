@@ -1,6 +1,7 @@
 import pygame, numpy as np
 from pygame.locals import *
 import random, sys, pickle
+from scamp import Session, Ensemble, current_clock
 
 
 # soundfonts from https://sites.google.com/site/soundfonts4u/home
@@ -9,11 +10,17 @@ pianoSF = "/usr/share/sounds/sf2/Steinway_Grand-SF4U-v1.sf2"
 essentialSF = "/usr/share/sounds/sf2/Essential_Keys-sforzando-v9.5.sf2"
 bassSF = "/usr/share/sounds/sf2/Nice-Bass-Plus-Drums-v5.2.sf2"
 
-if len(sys.argv)>=2 and all(["Steinway" in a for a in sys.argv[1:]]):
-    sf = pianoSF
-elif len(sys.argv)==8+1+1:
+if len(sys.argv)>=1+1+1:
     sf = sys.argv[1]
     std = sys.argv[2:]
+else:
+    std = ["Grand Piano"]
+    sf = "/usr/share/sounds/sf2/SGM-v2.01-CompactGrand-Guit-Bass-v2.7.sf2"
+
+number_of_counters_y = 7 # the logic depends on this number being 7, so when changing, one has to change the code
+number_of_counters_x = len(std)
+
+number_of_counters = number_of_counters_x*number_of_counters_y
 
 
 
@@ -31,7 +38,8 @@ def construct_ensemble(sf):
     #    std = sys.argv[1:]
     #else:
     #    std = ["Harp","Harp","Piano","Piano","Violin","Violoncello","Panflute","Acoustic Bass"] 
-    return [ensemble.new_part(p) for p in std]
+    #return [ensemble.new_midi_part(p,midi_output_device=6) for p in std] #lmms
+    return [ensemble.new_part(p) for p in std] #lmms
     #strings = ensemble.new_part("strings", (0, 40))
 
 def aT(u,a):
@@ -60,7 +68,9 @@ def orderMul(x):
 
 
 pygame.init()
-screen = pygame.display.set_mode((640, 480))
+#screen = pygame.display.set_mode((640, 480))
+screen = pygame.display.set_mode((80*(number_of_counters_x+1), 80*(number_of_counters_y+1)))
+
 clock = pygame.time.Clock()
 
 def drawRect(surface,color,xStart,yStart):
@@ -74,7 +84,7 @@ def drawText(surface, text, x,y):
 def getRect(x,y):
     k = (x//80)
     l = (y//80)
-    return k+l*8
+    return k+l*number_of_counters_x
 
 pygame.font.init() # you have to call this at the start, 
                   # if you want to use this module.
@@ -99,9 +109,12 @@ print(len(fourLoops))
 countBass = 0
 
 
-s = Session(tempo=120,default_soundfont=sf) #.run_as_server()
+
+s = Session(tempo=120,default_soundfont=sf).run_as_server()
 
 s.print_available_midi_output_devices()
+
+s.print_available_midi_input_devices()
 
 tracks = construct_ensemble(sf)
 
@@ -132,9 +145,14 @@ s.register_midi_listener(port_number_or_device_name=1, callback_function=callbac
 
 
 try:
-    counters = pickle.load(open("counters.pkl","rb"))
+    cc = pickle.load(open("counters_"+str(number_of_counters_x)+"x"+str(number_of_counters_y)+".pkl","rb"))
 except:
-    counters =  dict(zip(range(48),48*[0]))
+    cc = None
+
+if not cc is None and len(cc.keys())==number_of_counters:
+    counters = cc
+else:
+    counters =  dict(zip(range(number_of_counters),number_of_counters*[0]))
 
 def updateCounterForRect(rectangleNumber,plusOne=True):
     global counters
@@ -236,23 +254,26 @@ def getDottedDurationsFromTree(tree,dotted=True):
 
 
 def generateBar(nTracks,barNumber,notelist,SYMFUNC,NFUNC,BASEFUNC):
+    global number_of_counters_x, barCounter,counters
     bars = []
     for i in range(nTracks):
         bars.append([])
         
     for tt in range(nTracks):
-        barCounter = 0
-        c = 1
         for bb in [barNumber]:
             K = bb[tt]
-            mingusDurations = getDurationsFromTree([sumTree,digitsTree][counters[32+tt]%2](max(K,1)))
+            mingusDurations = getDurationsFromTree([sumTree,digitsTree][counters[4*number_of_counters_x+tt]%2](max(K,1)))
             durations = mingusDurations
             pitches = []
             volumes = []
-            c = bb[tt]
-            barCounter += 1
+            if counters[1*number_of_counters_x+tt]>0 and counters[3*number_of_counters_x+tt]>0:
+                barCounter[tt] += 1
+                c = barCounter[tt]            
+            else:
+                c = bb[tt]
             for d in durations:
                 c+= 1
+                #print(tt,barCounter[tt],c)
                 dc = digitsReversed(c,BASEFUNC,padto=NFUNC)[:NFUNC]
                 pitchMod = (SYMFUNC([d+1 for d in dc]))%len(notelist)
                 pitchlist = []
@@ -261,7 +282,7 @@ def generateBar(nTracks,barNumber,notelist,SYMFUNC,NFUNC,BASEFUNC):
                 else:
                     pitch = None
                 pitches.append([pitch])
-                volumes.append(0.50+counters[40+tt]/10.0)    # todo: change this
+                volumes.append(0.50) #+counters[5*number_of_counters_x+tt]/10.0)    # todo: change this
             bar = list(zip(pitches,durations,volumes))        
             bars[tt].append(bar)    
     return(bars)
@@ -298,15 +319,17 @@ listFuncs = [
                (funcTirana3,5,6)
             ]
 
+lfunc = [(funcABC,2),(funcKlein,4),(funcTirana,5)]
+
 def play_bar_for_instrument(instNr,bar):
-    global tracks, counters
-    if counters[24+instNr]<=0 or counters[instNr]<=0:
+    global tracks, counters, number_of_counters_x
+    if counters[3*number_of_counters_x+instNr]<=0 or counters[instNr]<=0:
         return
     #print(tracks[instNr],bar)
     for i in range(len(bar)):
         nc,duration,volume = bar[i]
         dur = 4.0/(duration)
-        pitch = max(min(nc[0]+counters[16+instNr]*12,127),0) # octave at third row, counter = 0 -> 4-th octave
+        pitch = max(min(nc[0]+counters[2*number_of_counters_x+instNr]*12,127),0) # octave at third row, counter = 0 -> 4-th octave
         if not pitch is None:
             tracks[instNr].play_note(pitch,volume, dur)
 
@@ -316,17 +339,42 @@ def setCounterToValue(rect,value):
     global counters
     counters[rect]= value
 
-def main():
-   global countBass,tracks,oneOctave,SYMFUNC,NFUNC,BASEFUNC, counters, listFuncs
+barCounter = dict(zip(range(len(tracks)),len(tracks)*[0]))
+
+def scamp_loop():
+   global countBass,tracks,oneOctave,SYMFUNC,NFUNC,BASEFUNC, counters, listFuncs,number_of_counters_x,s,started_transcribing
+   #curr_clock = current_clock()
+   #curr_clock.synchronization_policy = "no synchronization" #  http://scamp.marcevanstein.com/clockblocks/clockblocks.clock.Clock.html#clockblocks.clock.Clock
    while True:
       nTracks = len(tracks)
       barNumbers = [counters[k]  for k in range(nTracks)]
       for tt in range(len(tracks)):
-          SYMFUNC,NFUNC,BASEFUNC = listFuncs[ max(counters[8+tt],0)%len(listFuncs)]
+          #SYMFUNC,NFUNC,BASEFUNC = listFuncs[ max(counters[1*number_of_counters_x+tt],0)%len(listFuncs)]
+          SYMFUNC,NFUNC = lfunc[counters[5*number_of_counters_x+tt]%len(lfunc)]
+          BASEFUNC = max(2,counters[6*number_of_counters_x+tt])
           bars = generateBar(nTracks, barNumbers, oneOctave, SYMFUNC,NFUNC,BASEFUNC)
           for t in range(len(bars[tt])):
-              if counters[24+tt]>0 and counters[tt]>0:
-                  s.fork(play_bar_for_instrument,(tt,bars[tt][t]))
+              if counters[3*number_of_counters_x+tt]>0 and counters[tt]>0:
+                  if not started_transcribing:
+                      s.start_transcribing()
+                      started_transcribing = True
+                  current_clock().fork(play_bar_for_instrument,(tt,bars[tt][t]))
+                  #curr_clock.fork(play_bar_for_instrument,(tt,bars[tt][t]))
+                  #curr_clock.wait_for_children_to_finish()
+      if len(current_clock().children()) > 0:
+          current_clock().wait_for_children_to_finish()
+      #else:
+      #    # prevents hanging if nothing has been forked yet
+      #    curr_clock.wait(1.0)
+
+description = ["BN","Cn","Octave","On/Off","Tree","FN","BF"]
+
+def main():
+   global countBass,tracks,oneOctave,SYMFUNC,NFUNC,BASEFUNC, counters, listFuncs,number_of_counters_x, s
+   s_forked = False
+   #s.fork(scamp_loop)
+
+   while True:
       for event in pygame.event.get():
             xPos,yPos = (pygame.mouse.get_pos())
             leftPressed,middlePressed,rightPressed = pygame.mouse.get_pressed()
@@ -347,32 +395,41 @@ def main():
                 setCounterToValue(rect,val)
             #print(counters)
             if event.type == QUIT:
-               #pygame.quit()
                return
-               #print(event)
-               #print(event.x, event.y)
-               #print(event.flipped)
-               #print(event.which)
-               # can access properties with
-               # proper notation(ex: event.y)
-      for k in range(8):
-          for l in range(6):
-              color = ((k*5)%255,(l*5)%255,(k+l)%255)
-              drawRect(screen, color,k*80,l*80)
-              drawText(screen, str(counters[k+l*8]), k*80+40,l*80+40)
+      for k in range(number_of_counters_x+1):
+          for l in range(number_of_counters_y+1):
+              if l<number_of_counters_y and k < number_of_counters_x:
+                  color = ((k*5)%255,(l*5)%255,(k+l)%255)
+                  drawRect(screen, color,k*80,l*80)
+                  drawText(screen, str(counters[k+l*number_of_counters_x]), k*80+40,l*80+40)
+              elif l == number_of_counters_y and k < number_of_counters_x:
+                  color = (0,0,0)
+                  drawRect(screen, color,k*80,l*80)
+                  drawText(screen, tracks[k].name[0:3]+str("."), k*80+40,l*80+40) 
+              elif l < number_of_counters_y and k == number_of_counters_x:
+                  color = (0,0,0)
+                  drawRect(screen, color,k*80,l*80)
+                  drawText(screen, description[l][0:3]+str("."), k*80+40,l*80+40) 
+              else:
+                  drawRect(screen, color,k*80,l*80)
+
       pygame.display.flip()
-      s.wait_for_children_to_finish()
       clock.tick()
+      if any([counters[3*number_of_counters_x+tt]>0 and counters[tt]>0 for tt in range(len(tracks))]) and not s_forked: # first instrument starts playing
+          #s.start_transcribing()
+          s_forked = True
+          s.fork(scamp_loop)
+
 # Execute game:
-s.start_transcribing()
+started_transcribing = False
 main()
 
 # write counters to file:
 
-with open("counters.pkl","wb") as f:
+with open("counters_"+str(number_of_counters_x)+"x"+str(number_of_counters_y)+".pkl","wb") as f:
     pickle.dump(counters,f)
 
 performance = s.stop_transcribing()
 score = performance.to_score()
 music_xml = score.to_music_xml()
-music_xml.export_to_file("my_first_music_xml.xml")
+music_xml.export_to_file("my_music.xml")
